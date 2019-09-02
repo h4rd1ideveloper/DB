@@ -34,23 +34,23 @@ class Dao extends QueryBuilder
     /**
      * @var string
      */
-    private $_db_type = DB_type;
+    private $_db_type;
     /**
      * @var string
      */
-    private $_db_host = DB_HOST;
+    private $_db_host;
     /**
      * @var string
      */
-    private $_db_user = DB_USER;
+    private $_db_user;
     /**
      * @var string
      */
-    private $_db_pass = DB_PASS;
+    private $_db_pass;
     /**
      * @var string
      */
-    private $_db_name = DB_NAME;
+    private $_db_name;
     /**
      * @var bool
      */
@@ -77,7 +77,7 @@ class Dao extends QueryBuilder
      *
      * @return Dao Instancia
      */
-    public function __construct($db_user = DB_USER, $db_pass = DB_PASS, $db_name = DB_NAME, $db_type = DB_type, $db_path = null, $db_host = DB_HOST)
+    public function __construct($db_host, $db_user, $db_pass, $db_name, $db_type = "mysql", $db_path = null)
     {
         $this->_db_host = $db_host;
         $this->_db_user = $db_user;
@@ -183,8 +183,8 @@ class Dao extends QueryBuilder
      *
      * @param string $table tabela
      * @param string $columns colunas
-     * @param string $join Junção
-     * @param string $where Condicional
+     * @param string|array $join Junção
+     * @param string|array $where Condicional
      * @param string $order Ordenação
      * @param integer $limit limit
      *
@@ -324,9 +324,4 @@ class Dao extends QueryBuilder
             return $e->getMessage() . '' . $e->getTraceAsString() . '';
         }
     }
-}
-
-$db = new Dao();
-if ($db->connect()) {
-    $db = $db->getDB();
 }
