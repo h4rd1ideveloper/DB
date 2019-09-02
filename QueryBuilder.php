@@ -1,5 +1,7 @@
 <?php
 
+namespace App\assets\lib;
+
 /**
  * Manager query String
  */
@@ -17,15 +19,15 @@ class QueryBuilder
             return false;
         }
         $q = sprintf(
-        /** @lang text */
+            /** @lang text */
             "UPDATE %s SET",
             $table
         );
 
         if (!is_array($value)) {
             $q .= sprintf(
-            /** @lang text */
-                " controleArrec = '%s' ",
+                /** @lang text */
+                "%s",
                 $value
             );
         } else {
@@ -75,7 +77,7 @@ class QueryBuilder
             return false;
         }
         $q = sprintf(
-        /** @lang text */
+            /** @lang text */
             "SELECT %s FROM %s ",
             $columns,
             $table
@@ -100,7 +102,7 @@ class QueryBuilder
             $q .= sprintf(" ORDER BY %s ", $order);
         }
         if ($limit != null) {
-            $q .= sprintf(" limit %s ", (string)$limit);
+            $q .= sprintf(" limit %s ", (string) $limit);
         }
         return $q;
     }
@@ -117,7 +119,7 @@ class QueryBuilder
             return false;
         }
         $insert = sprintf(
-        /**@lang text */
+            /**@lang text */
             'INSERT INTO %s ',
             $table
         );
@@ -133,7 +135,7 @@ class QueryBuilder
      * @param $fields
      * @param $fieldsAndValues
      */
-    private static function fillFieldsAndValues(& $values, & $fields, $fieldsAndValues): void
+    private static function fillFieldsAndValues(&$values, &$fields, $fieldsAndValues): void
     {
         $i = 0;
         foreach ($fieldsAndValues as $field => $value) {

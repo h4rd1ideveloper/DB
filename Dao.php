@@ -1,21 +1,26 @@
 <?php
-error_reporting(E_ALL | E_STRICT);
-ini_set('display_errors', 'On');
-define("DB_type", "mysql");
-define("DB_HOST", "localhost");
-define("DB_USER", "root");
-define("DB_PASS", "");
-define("DB_NAME", "crefazscm_webscm");
-require_once __DIR__.'./QueryBuilder.php';
+
+namespace App\assets\lib;
+
+use PDO;
+use PDOException;
+
+/**
+ * Class Dao
+ * @package LIB
+ */
 class Dao extends QueryBuilder
 {
+    /**
+     *
+     */
     public function __destruct()
     {
-       self::disconnect();
+        self::disconnect();
     }
 
     /**
-     * @var \PDO $_db DB
+     * @var PDO $_db DB
      */
     private $_db;
     /**
@@ -83,27 +88,59 @@ class Dao extends QueryBuilder
 
         switch ($this->_db_type) {
             case "mysql":
-                $this->_connection_string = sprintf(/** @lang text */ "mysql:host=%s;dbname=%s", $db_host, $db_name);
+                $this->_connection_string = sprintf(
+                    /** @lang text */
+                    "mysql:host=%s;dbname=%s",
+                    $db_host,
+                    $db_name
+                );
                 break;
             case "sqlite":
-                $this->_connection_string = sprintf(/** @lang text */ "sqlite:%s", $db_path);
+                $this->_connection_string = sprintf(
+                    /** @lang text */
+                    "sqlite:%s",
+                    $db_path
+                );
                 break;
             case "oracle":
-                $this->_connection_string = sprintf(/** @lang text */ "OCI:dbname=%s;charset=UTF-8", $db_name);
+                $this->_connection_string = sprintf(
+                    /** @lang text */
+                    "OCI:dbname=%s;charset=UTF-8",
+                    $db_name
+                );
                 break;
             case "dblib":
-                $this->_connection_string = sprintf(/** @lang text */ "dblib:host=%s;dbname=%s", $db_host, $db_name);
+                $this->_connection_string = sprintf(
+                    /** @lang text */
+                    "dblib:host=%s;dbname=%s",
+                    $db_host,
+                    $db_name
+                );
                 break;
             case "postgresql":
-                $this->_connection_string = sprintf(/** @lang text */ "pgsql:host=%s dbname=%s", $db_host, $db_name);
+                $this->_connection_string = sprintf(
+                    /** @lang text */
+                    "pgsql:host=%s dbname=%s",
+                    $db_host,
+                    $db_name
+                );
                 break;
             case "sqlsrv":
-                $this->_connection_string = sprintf(/** @lang text */ "sqlsrv:Server=%s;Database=%s", $db_host, $db_name);
+                $this->_connection_string = sprintf(
+                    /** @lang text */
+                    "sqlsrv:Server=%s;Database=%s",
+                    $db_host,
+                    $db_name
+                );
                 break;
         }
         return $this;
     }
 
+    public function getDB()
+    {
+        return $this->_db;
+    }
     /**
      * Connect
      *
@@ -271,7 +308,7 @@ class Dao extends QueryBuilder
     {
         $deleteQ = parent::keyAndValue(
             sprintf(
-            /**@lang text */
+                /**@lang text */
                 'DELETE FROM %s',
                 $table
             ),
@@ -287,4 +324,9 @@ class Dao extends QueryBuilder
             return $e->getMessage() . '' . $e->getTraceAsString() . '';
         }
     }
+}
+
+$db = new Dao();
+if ($db->connect()) {
+    $db = $db->getDB();
 }
