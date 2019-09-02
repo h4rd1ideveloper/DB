@@ -1,10 +1,5 @@
 <?php
 
-namespace App\assets\lib;
-
-/**
- * Manager query String
- */
 class QueryBuilder
 {
     /**
@@ -19,14 +14,14 @@ class QueryBuilder
             return false;
         }
         $q = sprintf(
-            /** @lang text */
+        /** @lang text */
             "UPDATE %s SET",
             $table
         );
 
         if (!is_array($value)) {
             $q .= sprintf(
-                /** @lang text */
+            /** @lang text */
                 "%s",
                 $value
             );
@@ -45,39 +40,51 @@ class QueryBuilder
      * @param $keyAndValue array to set key and values
      * @param null|string $delimiter delimiter each expression
      * @param null|bool $quote has quote '%s'
-     * @return string
+     * @param bool $bind
+     * @return array|string;
      */
-    protected static function keyAndValue($q, $keyAndValue, $delimiter = 'and', $quote = false)
+    protected static function keyAndValue($q, $keyAndValue, $delimiter = 'and', $quote = false, $bind = false)
     {
         $i = 0;
-        if ($quote) {
-            foreach ($keyAndValue as $key => $value) {
-                $q .= ($i++ == 0) ? sprintf(" %s = '%s' ", $key, $value) : sprintf(" %s %s = '%s' ", $delimiter, $key, $value);
+        if ($bind === false) {
+            if ($quote) {
+                foreach ($keyAndValue as $key => $value) {
+                    $q .= ($i++ == 0) ? sprintf(" %s = '%s' ", $key, $value) : sprintf(" %s %s = '%s' ", $delimiter, $key, $value);
+                }
+            } else {
+                foreach ($keyAndValue as $key => $value) {
+                    $q .= ($i++ == 0) ? sprintf(" %s = %s ", $key, $value) : sprintf(" %s %s = %s ", $delimiter, $key, $value);
+                }
             }
+            return $q;
         } else {
+            $paramsToBind = array();
             foreach ($keyAndValue as $key => $value) {
-                $q .= ($i++ == 0) ? sprintf(" %s = %s ", $key, $value) : sprintf(" %s %s = %s ", $delimiter, $key, $value);
+                $q .= ($i++ == 0) ? sprintf(" %s = :%s ", $key, $key) : sprintf(" %s %s = :%s ", $delimiter, $key, $key);
+                $paramsToBind[":" . $key] = $value;
             }
+            return array($q, $paramsToBind);
         }
-        return $q;
     }
 
     /**
+     * @param $PDO PDO
      * @param string $table string
      * @param null|string $columns string
      * @param null|string|array $join string
-     * @param null|string|array $where array
+     * @param null|array $where array
      * @param null|string $order string
      * @param null|string $limit string
-     * @return bool|string
+     * @param $bind bool
+     * @return bool|PDOStatement
      */
-    public static function querySelect($table, $columns = "*", $join = null, $where = null, $order = null, $limit = null)
+    public static function querySelect($PDO, $table, $columns = "*", $join = null, $where = null, $order = null, $limit = null, $bind = false)
     {
         if (!$table) {
             return false;
         }
         $q = sprintf(
-            /** @lang text */
+        /** @lang text */
             "SELECT %s FROM %s ",
             $columns,
             $table
@@ -86,25 +93,37 @@ class QueryBuilder
             if (!is_array($join)) {
                 $q .= $join;
             } else {
-                $join && $q .= sprintf(" %s %s on ", $join['type'], $join['table']);
-                if (!is_array($join['on'])) {
-                    $q .= sprintf(" %s ", $join['on']);
-                } else {
-                    $q = self::keyAndValue($q, $join['on']);
+                foreach ($join as $currentJoin){
+                    $q .= $currentJoin." ";
                 }
             }
         }
         if ($where != null) {
-            $q .= "WHERE ";
-            $q = self::keyAndValue($q, $where, 'and', true);
+            $q .= " WHERE ";
+            if ($bind) {
+                $aux = self::keyAndValue($q, $where, 'and', true, $bind);
+                $q = $aux[0];
+                $params = $aux[1];
+            } else {
+                $q = self::keyAndValue($q, $where, 'and', true);
+            }
         }
         if ($order != null) {
             $q .= sprintf(" ORDER BY %s ", $order);
         }
         if ($limit != null) {
-            $q .= sprintf(" limit %s ", (string) $limit);
+            $q .= sprintf(" limit %s ", (string)$limit);
         }
-        return $q;
+        $count = 1;
+        print_r($q);
+        $sql = $PDO->prepare($q);
+        if (isset($params) && count($params)) {
+            foreach ($params as $key => &$param) {
+                $sql->bindParam($key, $param);
+                print_r("<br/>" . $key . " " . $param);
+            }
+        }
+        return $sql;
     }
 
     /**
@@ -119,7 +138,7 @@ class QueryBuilder
             return false;
         }
         $insert = sprintf(
-            /**@lang text */
+        /**@lang text */
             'INSERT INTO %s ',
             $table
         );
@@ -135,7 +154,7 @@ class QueryBuilder
      * @param $fields
      * @param $fieldsAndValues
      */
-    private static function fillFieldsAndValues(&$values, &$fields, $fieldsAndValues): void
+    private static function fillFieldsAndValues(&$values, &$fields, $fieldsAndValues)
     {
         $i = 0;
         foreach ($fieldsAndValues as $field => $value) {

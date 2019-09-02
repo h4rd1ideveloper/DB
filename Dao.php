@@ -1,23 +1,12 @@
 <?php
-
-namespace App\assets\lib;
-
-use PDO;
-use PDOException;
+require_once 'QueryBuilder.php';
 
 /**
  * Class Dao
- * @package LIB
  */
 class Dao extends QueryBuilder
 {
-    /**
-     *
-     */
-    public function __destruct()
-    {
-        self::disconnect();
-    }
+
 
     /**
      * @var PDO $_db DB
@@ -89,7 +78,7 @@ class Dao extends QueryBuilder
         switch ($this->_db_type) {
             case "mysql":
                 $this->_connection_string = sprintf(
-                    /** @lang text */
+                /** @lang text */
                     "mysql:host=%s;dbname=%s",
                     $db_host,
                     $db_name
@@ -97,21 +86,21 @@ class Dao extends QueryBuilder
                 break;
             case "sqlite":
                 $this->_connection_string = sprintf(
-                    /** @lang text */
+                /** @lang text */
                     "sqlite:%s",
                     $db_path
                 );
                 break;
             case "oracle":
                 $this->_connection_string = sprintf(
-                    /** @lang text */
+                /** @lang text */
                     "OCI:dbname=%s;charset=UTF-8",
                     $db_name
                 );
                 break;
             case "dblib":
                 $this->_connection_string = sprintf(
-                    /** @lang text */
+                /** @lang text */
                     "dblib:host=%s;dbname=%s",
                     $db_host,
                     $db_name
@@ -119,7 +108,7 @@ class Dao extends QueryBuilder
                 break;
             case "postgresql":
                 $this->_connection_string = sprintf(
-                    /** @lang text */
+                /** @lang text */
                     "pgsql:host=%s dbname=%s",
                     $db_host,
                     $db_name
@@ -127,7 +116,7 @@ class Dao extends QueryBuilder
                 break;
             case "sqlsrv":
                 $this->_connection_string = sprintf(
-                    /** @lang text */
+                /** @lang text */
                     "sqlsrv:Server=%s;Database=%s",
                     $db_host,
                     $db_name
@@ -137,10 +126,37 @@ class Dao extends QueryBuilder
         return $this;
     }
 
+    /**
+     *
+     */
+    public function __destruct()
+    {
+        self::disconnect();
+    }
+
+    /**
+     * Disconecta ($con==false)
+     *
+     * @return bool
+     */
+    public function disconnect()
+    {
+        if ($this->_con) {
+            unset($this->_db);
+            $this->_con = false;
+            return true;
+        }
+        return !$this->_con;
+    }
+
+    /**
+     * @return PDO
+     */
     public function getDB()
     {
         return $this->_db;
     }
+
     /**
      * Connect
      *
@@ -164,38 +180,23 @@ class Dao extends QueryBuilder
     }
 
     /**
-     * Disconecta ($con==false)
-     *
-     * @return bool
-     */
-    public function disconnect()
-    {
-        if ($this->_con) {
-            unset($this->_db);
-            $this->_con = false;
-            return true;
-        }
-        return !$this->_con;
-    }
-
-    /**
      * Select
      *
      * @param string $table tabela
      * @param string $columns colunas
      * @param string|array $join Junção
-     * @param string|array $where Condicional
+     * @param array $where Condicional
      * @param string $order Ordenação
      * @param integer $limit limit
      *
-     * @return mixed True ou getMessage()
+     * @param bool $bind
+     * @return bool
      */
-    public function select($table, $columns = "*", $join = null, $where = null, $order = null, $limit = null)
+    public function select($table, $columns = "*", $join = null, $where = null, $order = null, $limit = null, $bind = true)
     {
-        $q = parent::querySelect($table, $columns, $join, $where, $order, $limit);
         $this->numResults = null;
         try {
-            $sql = $this->_db->prepare($q);
+            $sql = parent::querySelect($this->_db, $table, $columns, $join, $where, $order, $limit, $bind);
             $sql->execute();
             $this->result = $sql->fetchAll(PDO::FETCH_ASSOC);
             $this->numResults = count($this->result);
@@ -204,7 +205,8 @@ class Dao extends QueryBuilder
             }
             return true;
         } catch (PDOException $e) {
-            return $e->getMessage() . '' . $e->getTraceAsString() . '';
+            print_r( $e->getMessage() . '' . $e->getTraceAsString() . '');
+            return false;
         }
     }
 
@@ -264,10 +266,10 @@ class Dao extends QueryBuilder
      */
     private function tableExists($table)
     {
-        $q = parent::querySelect($table);
+
         $this->numResults = null;
         try {
-            $sql = $this->_db->prepare($q);
+            $sql = parent::querySelect($this->_db, $table, '*');
             $sql->execute();
             $this->result = $sql->fetchAll(PDO::FETCH_OBJ);
             $this->numResults = count($this->result);
@@ -308,7 +310,7 @@ class Dao extends QueryBuilder
     {
         $deleteQ = parent::keyAndValue(
             sprintf(
-                /**@lang text */
+            /**@lang text */
                 'DELETE FROM %s',
                 $table
             ),
