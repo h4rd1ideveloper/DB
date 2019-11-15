@@ -3,24 +3,11 @@ ini_set('display_startup_errors', 1);
 ini_set('display_errors', 1);
 error_reporting(-1);
 require_once 'Dao.php';
-$dao = new Dao('localhost', 'root', '', 'criacaotelas');
+$dao = new Dao('localhost', 'root', '', 'app');
 $flag = $dao->connect();
+$dao->tableExists('user');
+exit(print_r($dao->getResult()));
 if ($flag) {
-    //SELECT * from ocorrencia  inner join produtos  on ocorrencia.produto = produtos.CODPRODUTO where CODPRODUTO = '6' ;
-    /**
-     * if ($join !== null) {
-     * if (!is_array($join)) {
-     * $q .= $join;
-     * } else {
-     * $join && $q .= sprintf(" %s %s on ", $join['type'], $join['table']);
-     * if (!is_array($join['on'])) {
-     * $q .= sprintf(" %s ", $join['on']);
-     * } else {
-     * $q = self::keyAndValue($q, $join['on']);
-     * }
-     * }
-     * }
-     */
     $dao->select(
         'ocorrencia',
         '*',

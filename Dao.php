@@ -1,4 +1,5 @@
 <?php
+
 require_once 'QueryBuilder.php';
 
 /**
@@ -6,8 +7,6 @@ require_once 'QueryBuilder.php';
  */
 class Dao extends QueryBuilder
 {
-
-
     /**
      * @var PDO $_db DB
      */
@@ -63,10 +62,8 @@ class Dao extends QueryBuilder
      * @param string $db_type Tipo
      * @param string $db_path Path
      * @param string $db_host Host
-     *
-     * @return Dao Instancia
      */
-    public function __construct($db_host, $db_user, $db_pass, $db_name, $db_type = "mysql", $db_path = null)
+    public function __construct($db_host, $db_user, $db_pass, $db_name, $db_type = 'mysql', $db_path = null)
     {
         $this->_db_host = $db_host;
         $this->_db_user = $db_user;
@@ -79,7 +76,7 @@ class Dao extends QueryBuilder
             case "mysql":
                 $this->_connection_string = sprintf(
                 /** @lang text */
-                    "mysql:host=%s;dbname=%s",
+                    'mysql:host=%s;dbname=%s',
                     $db_host,
                     $db_name
                 );
@@ -87,21 +84,21 @@ class Dao extends QueryBuilder
             case "sqlite":
                 $this->_connection_string = sprintf(
                 /** @lang text */
-                    "sqlite:%s",
+                    'sqlite:%s',
                     $db_path
                 );
                 break;
             case "oracle":
                 $this->_connection_string = sprintf(
                 /** @lang text */
-                    "OCI:dbname=%s;charset=UTF-8",
+                    'OCI:dbname=%s;charset=UTF-8',
                     $db_name
                 );
                 break;
             case "dblib":
                 $this->_connection_string = sprintf(
                 /** @lang text */
-                    "dblib:host=%s;dbname=%s",
+                    'dblib:host=%s;dbname=%s',
                     $db_host,
                     $db_name
                 );
@@ -109,7 +106,7 @@ class Dao extends QueryBuilder
             case "postgresql":
                 $this->_connection_string = sprintf(
                 /** @lang text */
-                    "pgsql:host=%s dbname=%s",
+                    'pgsql:host=%s dbname=%s',
                     $db_host,
                     $db_name
                 );
@@ -117,13 +114,12 @@ class Dao extends QueryBuilder
             case "sqlsrv":
                 $this->_connection_string = sprintf(
                 /** @lang text */
-                    "sqlsrv:Server=%s;Database=%s",
+                    'sqlsrv:Server=%s;Database=%s',
                     $db_host,
                     $db_name
                 );
                 break;
         }
-        return $this;
     }
 
     /**
@@ -131,7 +127,7 @@ class Dao extends QueryBuilder
      */
     public function __destruct()
     {
-        self::disconnect();
+        $this->disconnect();
     }
 
     /**
@@ -150,14 +146,6 @@ class Dao extends QueryBuilder
     }
 
     /**
-     * @return PDO
-     */
-    public function getDB()
-    {
-        return $this->_db;
-    }
-
-    /**
      * Connect
      *
      * @return bool True ou False
@@ -172,7 +160,7 @@ class Dao extends QueryBuilder
                 $this->_con = true;
                 return $this->_con;
             } catch (PDOException $e) {
-                return $e->getMessage();
+                return $e->getMessage() . $e->getTraceAsString();
             }
         } else {
             return true;
@@ -186,17 +174,18 @@ class Dao extends QueryBuilder
      * @param string $columns colunas
      * @param string|array $join Junção
      * @param array $where Condicional
+     * @param null $group
      * @param string $order Ordenação
      * @param integer $limit limit
      *
      * @param bool $bind
      * @return bool
      */
-    public function select($table, $columns = "*", $join = null, $where = null, $order = null, $limit = null, $bind = true)
+    public function select($table, $columns = "*", $join = null, $where = null, $group = null, $order = null, $limit = null, $bind = true)
     {
         $this->numResults = null;
         try {
-            $sql = parent::querySelect($this->_db, $table, $columns, $join, $where, $order, $limit, $bind);
+            $sql = self::querySelect($this->_db, $table, $columns, $join, $where, $group, $order, $limit, $bind);
             $sql->execute();
             $this->result = $sql->fetchAll(PDO::FETCH_ASSOC);
             $this->numResults = count($this->result);
@@ -205,7 +194,7 @@ class Dao extends QueryBuilder
             }
             return true;
         } catch (PDOException $e) {
-            print_r( $e->getMessage() . '' . $e->getTraceAsString() . '');
+            print_r($e->getMessage() . $e->getTraceAsString());
             return false;
         }
     }
@@ -244,17 +233,13 @@ class Dao extends QueryBuilder
     public function update($table, $where, $value)
     {
         if ($this->tableExists($table)) {
-            $q = parent::queryUpdate($table, $value, $where);
+            $q = self::queryUpdate($table, $value, $where);
             $this->numResults = null;
+            //exit($q);
             try {
-                $sql = $this->_db->prepare($q);
-                $sql->execute();
-                $this->result = $sql->fetchAll(PDO::FETCH_ASSOC);
-                $this->numResults = count($this->result);
-                $this->numResults === 0 ? $this->result = null : true;
-                return true;
+                return $this->_db->prepare($q)->execute();
             } catch (PDOException $e) {
-                return $e->getMessage() . '' . $e->getTraceAsString() . '';
+                return $e->getMessage() . $e->getTraceAsString();
             }
         }
         return false;
@@ -264,22 +249,67 @@ class Dao extends QueryBuilder
      * @param $table
      * @return bool|string
      */
-    private function tableExists($table)
+    public function tableExists($table)
     {
-
         $this->numResults = null;
         try {
-            $sql = parent::querySelect($this->_db, $table, '*');
-            $sql->execute();
-            $this->result = $sql->fetchAll(PDO::FETCH_OBJ);
-            $this->numResults = count($this->result);
-            if ($this->numResults === 0) {
-                $this->numResults = null;
+            switch ($this->_db_type) {
+                case 'mysql':
+                {
+                    $sql = self::querySelect(
+                        $this->getDB(),
+                        'information_schema.tables',
+                        "if (count( table_name) = 0, 'false', 'true') as exist ",
+                        null,
+                        "table_schema = '$this->_db_name' and TABLE_NAME = '$table'",
+                        null,
+                        null,
+                        '1'
+                    );
+                    break;
+                }
+                case 'sqlite':
+                {
+                    $sql = self::querySelect(
+                        $this->getDB(),
+                        'sqlite_master',
+                        'name',
+                        null,
+                        "type='table' AND name='$table'"
+                    );
+                    break;
+                }
+                case 'oracle':
+                {
+                    $sql =self::querySelect(
+                        self::getDB(),
+                        'tab',
+                        'tname',
+                        null,
+                        "tname = '$table'"
+                    );
+                    break;
+                }
+                default:
+                {
+                    return false;
+                }
             }
+            $sql->execute();
+            $this->result = $sql->fetchAll(PDO::FETCH_ASSOC);
+            $this->numResults = count($this->result) === 0 ?: null;
             return true;
         } catch (PDOException $e) {
-            return sprintf("%s%s", $e->getMessage(), $e->getTraceAsString());
+            return sprintf('%s%s', $e->getMessage(), $e->getTraceAsString());
         }
+    }
+
+    /**
+     * @return PDO
+     */
+    public function getDB()
+    {
+        return $this->_db;
     }
 
     /**
@@ -290,13 +320,11 @@ class Dao extends QueryBuilder
      */
     public function insert($table, $fieldsAndValues)
     {
-        $insert = parent::queryInsert($table, $fieldsAndValues);
+        $insert = self::queryInsert($table, $fieldsAndValues);
         try {
-            $ins = $this->_db->prepare($insert);
-            $ins->execute();
-            return true;
+            return $this->_db->prepare($insert)->execute();
         } catch (PDOException $e) {
-            return $e->getMessage() . '' . $e->getTraceAsString() . '';
+            return $e->getMessage() . $e->getTraceAsString();
         }
     }
 
@@ -308,10 +336,10 @@ class Dao extends QueryBuilder
      */
     public function delete($table, $where)
     {
-        $deleteQ = parent::keyAndValue(
+        $deleteQ = self::keyAndValue(
             sprintf(
             /**@lang text */
-                'DELETE FROM %s',
+                'DELETE FROM %s WHERE ',
                 $table
             ),
             $where,
@@ -319,11 +347,9 @@ class Dao extends QueryBuilder
             true
         );
         try {
-            $del = $this->_db->prepare($deleteQ);
-            $del->execute();
-            return true;
+            return $this->_db->prepare($deleteQ)->execute();
         } catch (PDOException $e) {
-            return $e->getMessage() . '' . $e->getTraceAsString() . '';
+            return $e->getMessage() . $e->getTraceAsString();
         }
     }
 }
